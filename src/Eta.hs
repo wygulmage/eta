@@ -1,6 +1,7 @@
 {-# LANGUAGE PostfixOperators
            , PolyKinds
            , RankNTypes
+           , BangPatterns
   #-}
 module Eta (
 (.), ($), (&), ($!), curry, uncurry, flip, on, id,
@@ -31,14 +32,17 @@ infixr 0 $!
 @('undefined' $!) `seq` () = 'undefined' -- with PostfixOperators@
 @('undefined' $!) `seq` () = () -- without PostfixOperators@
 -}
-($!) f = f `seq` \ x -> x `seq` f x
+-- ($!) f = f `seq` \ x -> x `seq` f x
+($!) f = f `seq` \ x -> let !x' = x in f x'
 {-# INLINABLE ($!) #-}
 
 infixl 1 &
 (&) :: forall r a (b :: TYPE r). a -> (a -> b) -> b
 {-^ @x & f = f x@
 @y & x & g = g (x y)@ -- not @g x y@!
-@(& 'undefined') `seq` () = ()@
+
+>>> (& 'undefined') `seq` ()
+()
 -}
 x & f = f x
 {-# INLINABLE (&) #-}
@@ -46,7 +50,7 @@ x & f = f x
 -- infixl 1 !&
 -- (!&) :: a -> (a -> b) -> b
 -- {-^ Evaluate a value, then apply a function to it.
--- @y !& x !& g = g $! x $! y@ -- not @g (x !&) (y !&)@!
+-- @y !& x !& g = g $! x $! y@ -- not @y !& (x !& g)@!
 -- @(!& 'undefined') `seq` () = ()@
 -- -}
 -- x !& f = x `seq` f x

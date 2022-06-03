@@ -1,5 +1,4 @@
-{-# LANGUAGE PostfixOperators
-           , PolyKinds
+{-# LANGUAGE PolyKinds
            , RankNTypes
            , BangPatterns
   #-}
@@ -26,7 +25,7 @@ infixr 0 $
 {-# INLINABLE ($) #-}
 
 infixr 0 $!
-($!) :: (a -> b) -> a -> b
+($!) :: forall r a (b :: TYPE r). (a -> b) -> a -> b
 {-^ @($!) f@ makes @f@ strict in its first argument.
 @($!) 'undefined' = 'undefined'@
 @('undefined' $!) `seq` () = 'undefined' -- with PostfixOperators@

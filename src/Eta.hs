@@ -20,7 +20,7 @@ infixr 9 .
 {-# INLINABLE (.) #-}
 
 infixr 0 $
-($) :: forall r a (b :: TYPE r). (a -> b) -> a -> b
+($) :: forall ri ro (a :: TYPE ri) (b :: TYPE ro). (a -> b) -> a -> b
 ($) f = f
 {-# INLINABLE ($) #-}
 

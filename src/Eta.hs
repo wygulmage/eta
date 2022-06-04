@@ -1,7 +1,10 @@
 {-# LANGUAGE PolyKinds
-           , RankNTypes
+           , ExplicitForAll
            , BangPatterns
   #-}
+{-# OPTIONS_GHC -fno-do-lambda-eta-expansion #-}
+-- Without -fno-do-lambda-eta-expansion, (.) is redefined to \ !g f x -> g (f x), which is not eta equivalent!
+
 module Eta (
 (.), ($), (&), ($!), curry, uncurry, flip, on, id,
 ) where
@@ -14,24 +17,47 @@ import GHC.Exts (TYPE)
 infixr 9 .
 (.) :: forall r a b (c :: TYPE r). (b -> c) -> (a -> b) -> a -> c
 {-^ @(g . f) x@ is equivalent to @g (f x)@.
-@(.) 'undefined' = 'undefined'@
+@(.) 'Prelude.undefined' = 'Prelude.undefined'@
+@f . 'id' = f@
+
+I want four things to hold: @(g . f) x = g (f x)@, @f . id  =  f@, @id . f  =  f@, @h . (f . g)  =  (h . g) . f@.
+
+Different definitions:
+
+1. @(.) g f x = g (f x)@
+This fails both 'id' identities:
+@(Prelude.undefined . id) `seq` () = () -- should be 'Prelude.undefined'@
+@(id . Prelude.undefined) `seq` () = () -- should be 'Prelude.undefined'@
+
+2. @(.) g = g `seq` \ f x -> g (f x)@
+This fails only the last 'id' identity:
+@(id . undefined) `seq` () = () -- should be 'Prelude.undefined'@
+
+3. @(.) g = g `seq` \ f -> f `seq` \ x -> g (f x)@
+This fails only the first (application) identity:
+@(const () . undefined) () `seq` ()  =  'Prelude.undefined' -- should be ()@
+
+Unfortunately, there's no way to satisfy all three. You'd need to apply @g@ to the whole expression before forcing @f@, but force @f@ before taking the @x@ parameter.
+
+Version 2 satisfies as many goals as 3, but includes the goal satisfied by 'Prelude..', so 2 is what I've gone with.
 -}
 (.) g = g `seq` \ f x -> g (f x)
 {-# INLINABLE (.) #-}
 
 infixr 0 $
-($) :: forall ri ro (a :: TYPE ri) (b :: TYPE ro). (a -> b) -> a -> b
+($) :: forall ra rb (a :: TYPE ra) (b :: TYPE rb). (a -> b) -> a -> b
+{-^ Prelude's '$' is defined as @f $ x = f x@. That does not preserve eta-equivalence, so here it's redefined as a specialization of 'id': @($) f = f@.
+-}
 ($) f = f
 {-# INLINABLE ($) #-}
 
 infixr 0 $!
 ($!) :: forall r a (b :: TYPE r). (a -> b) -> a -> b
 {-^ @($!) f@ makes @f@ strict in its first argument.
-@($!) 'undefined' = 'undefined'@
-@('undefined' $!) `seq` () = 'undefined' -- with PostfixOperators@
-@('undefined' $!) `seq` () = () -- without PostfixOperators@
+@($!) 'Prelude.undefined' = 'Prelude.undefined'@
+@('Prelude.undefined' $!) `seq` () = 'Prelude.undefined' -- with PostfixOperators@
+@('Prelude.undefined' $!) `seq` () = () -- without PostfixOperators@
 -}
--- ($!) f = f `seq` \ x -> x `seq` f x
 ($!) f = f `seq` \ x -> let !x' = x in f x'
 {-# INLINABLE ($!) #-}
 
@@ -40,7 +66,7 @@ infixl 1 &
 {-^ @x & f = f x@
 @y & x & g = g (x y)@ -- not @g x y@!
 
->>> (& 'undefined') `seq` ()
+>>> (& 'Prelude.undefined') `seq` ()
 ()
 -}
 x & f = f x
@@ -50,22 +76,22 @@ x & f = f x
 -- (!&) :: a -> (a -> b) -> b
 -- {-^ Evaluate a value, then apply a function to it.
 -- @y !& x !& g = g $! x $! y@ -- not @y !& (x !& g)@!
--- @(!& 'undefined') `seq` () = ()@
+-- @(!& 'Prelude.undefined') `seq` () = ()@
 -- -}
 -- x !& f = x `seq` f x
 -- {-# INLINABLE (!&) #-}
 
 curry :: forall r a b (c :: TYPE r). ((a, b) -> c) -> a -> b -> c
 {-^ @curry f x y = f (x, y)@
-@curry 'undefined' = 'undefined'@
+@curry 'Prelude.undefined' = 'Prelude.undefined'@
 -}
 curry f = f `seq` \ x y -> f (x, y)
 {-# INLINABLE curry #-}
 
 uncurry :: forall r a b (c :: TYPE r). (a -> b -> c) -> (a, b) -> c
 {-^ @uncurry f (x, y) = f x y@
-@uncurry 'undefined' = 'undefined'@
-Currently, @uncurry f 'undefined' = f 'undefined' 'undefined'@. This matches Data.Tuple.uncurry. Is this the "correct" behavior?
+@uncurry 'Prelude.undefined' = 'Prelude.undefined'@
+Currently, @uncurry f 'Prelude.undefined' = f 'Prelude.undefined' 'Prelude.undefined'@. This matches Data.Tuple.uncurry. Is this the "correct" behavior?
 -}
 uncurry f = f `seq` \ ~(x, y) -> f x y
 {-# INLINABLE uncurry #-}
@@ -80,9 +106,9 @@ infixl 0 `on`
 on :: forall r a b (c :: TYPE r). (b -> b -> c) -> (a -> b) -> a -> a -> c
 {-^ @on f g x y = f (g x) (g y)@
 @g `on` 'id'  =  g@
-@on 'undefined' = 'undefined'@
-@('undefined' `on`) `seq` () = 'undefined'@ -- with PostfixOperators
-@('undefined' `on`) `seq` () = ()@ -- without PostfixOperators
+@on 'Prelude.undefined' = 'Prelude.undefined'@
+@('Prelude.undefined' `on`) `seq` () = 'Prelude.undefined'@ -- with PostfixOperators
+@('Prelude.undefined' `on`) `seq` () = ()@ -- without PostfixOperators
 -}
 on g = g `seq` \ f x y -> g (f x) (f y)
 {-# INLINABLE on #-}

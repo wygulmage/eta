@@ -5,10 +5,9 @@ version:             0.0.0.0
 homepage:            https://github.com/wygulmage/eta#readme
 license:             BSD3
 license-file:        LICENSE
-author:              keith
+author:              keith wygant
 maintainer:          example@example.com
-copyright:           2022 keith
-category:            Web
+copyright:           2022 keith wygant
 build-type:          Simple
 extra-source-files:  README.md
 cabal-version:       >=1.10
@@ -22,3 +21,9 @@ library
 source-repository head
   type:     git
   location: https://github.com/wygulmage/eta
+
+test-suite test
+  hs-source-dirs: test
+  main-is: Spec.hs
+  build-depends: eta, base >= 4 && < 5
+  type: exitcode-stdio-1.0

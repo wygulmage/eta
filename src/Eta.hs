@@ -4,6 +4,10 @@
   #-}
 {-# OPTIONS_GHC -fno-do-lambda-eta-expansion #-}
 -- Without -fno-do-lambda-eta-expansion, (.) is redefined to \ !g f x -> g (f x), which is not eta equivalent!
+{-|
+
+This module provides versions of 'Prelude..', 'Prelude.$', 'Prelude.$!', 'Prelude.curry', 'Prelude.uncurry', 'Prelude.flip', and 'Prelude.on' that attempt to preserve eta-equivalence. It also re-exports 'Data.Function.&' and 'Prelude.id' so you can use this module instead of @Data.Function@.
+-}
 
 module Eta (
 (.), ($), (&), ($!), curry, uncurry, flip, on, id,
@@ -39,7 +43,7 @@ This fails only the first (application) identity:
 
 Unfortunately, there's no way to satisfy all three. You'd need to apply @g@ to the whole expression before forcing @f@, but force @f@ before taking the @x@ parameter.
 
-Version 2 satisfies as many goals as 3 while satisfying the goal satisfied by 'Prelude..', so 2 is what I've gone with. However, the 'Functor' laws are @'fmap' 'id' = 'id'@ and @'fmap' g . 'fmap' (g . f)  =  'fmap' g . 'fmap' f@. This means that, for @Functor ((->) c)@, 'fmap' should be version 3.
+Version 2 satisfies as many goals as 3 while satisfying the goal satisfied by 'Prelude..', so 2 is what I've gone with. However, the 'Prelude.Functor' laws are @'fmap' 'id' = 'id'@ and @'Prelude.fmap' (g . f)  =  'Prelude.fmap' g . 'Prelude.fmap' f@. This means that, for @'Prelude.Functor' ((->) c)@, 'Prelude.fmap' should be version 3.
 -}
 (.) g = g `seq` \ f x -> g (f x)
 

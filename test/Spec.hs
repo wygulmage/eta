@@ -4,7 +4,6 @@ import Prelude hiding ((.), ($), ($!), flip, curry, uncurry)
 import Control.Applicative (liftA2)
 import Control.Monad (unless)
 import Control.Exception as Except
-import qualified System.IO.Unsafe as Unsafe
 import Eta
 
 main :: IO ()
@@ -23,6 +22,7 @@ main =
     flip unless (error "Test suite failed.")
 
 
+checkUndefined :: a -> String -> IO Bool
 checkUndefined x s = isBottom x >>= \ b -> if b
     then pure True
     else False <$ putStrLn ("'" <> s <> "' is not 'undefined'")
